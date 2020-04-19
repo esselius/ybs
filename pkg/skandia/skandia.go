@@ -14,11 +14,10 @@ import (
 
 type Skandia struct {
 	Browser       ybs.Browser
-	UserInterface ybs.UserInterface
 }
 
-func (s Skandia) Login() error {
-	personNumber, err := s.UserInterface.Ask("person number please")
+func (s Skandia) Login(ui ybs.UserInterface) error {
+	personNumber, err := ui.Ask("person number please")
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func (s Skandia) Login() error {
 	if err != nil {
 		return err
 	}
-	err = s.UserInterface.ShowQrCode(qrCode)
+	err = ui.ShowQrCode(qrCode)
 	if err != nil {
 		return err
 	}

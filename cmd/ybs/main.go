@@ -4,30 +4,33 @@ import (
 	"log"
 	"os"
 
-	"github.com/esselius/ybs/pkg/chrome"
+	"github.com/esselius/ybs/pkg/browser"
 	"github.com/esselius/ybs/pkg/skandia"
-	"github.com/esselius/ybs/pkg/sync"
 	"github.com/esselius/ybs/pkg/terminal"
 	"github.com/esselius/ybs/pkg/youneedabudget"
 )
 
 func main() {
-	userInterface := terminal.New()
+	tty := terminal.New()
 
-	budget := youneedabudget.New(os.Getenv("YNAB_TOKEN"))
+	ynab := youneedabudget.New(os.Getenv("YNAB_TOKEN"))
 
-	chromeBrowser, err := chrome.New(true)
+	chrome, err := browser.New(true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer chromeBrowser.Close()
+	defer chrome.Close()
 
 	bank := skandia.Skandia{
-		Browser: chromeBrowser,
-		UserInterface: userInterface,
+		Browser: chrome,
 	}
 
-	err = sync.BankToBudget(bank, budget, userInterface)
+	err = bank.Login(tty)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = ynab.BankImport(bank, tty)
 	if err != nil {
 		log.Fatal(err)
 	}

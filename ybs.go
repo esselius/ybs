@@ -25,31 +25,32 @@ type Account struct {
 }
 
 type BankService interface {
-	Login() error
+	Login(UserInterface) error
 	Logout() error
-	Transactions(account Account) ([]Transaction, error)
+	Transactions(Account) ([]Transaction, error)
 }
 
 type BudgetService interface {
 	Budgets() ([]Budget, error)
-	Accounts(budget Budget) ([]Account, error)
+	Accounts(Budget) ([]Account, error)
 	AppendTransactions(Budget, Account, []Transaction) error
+	BankImport(BankService, UserInterface) error
 }
 
 type UserInterface interface {
-	Ask(message string) (string, error)
-	Choose(message string, options []string) (string, error)
-	ShowQrCode(message string) error
+	Ask(string) (string, error)
+	Choose(string, []string) (string, error)
+	ShowQrCode(string) error
 }
 
 type Browser interface {
-	Get(url string) error
-	ClickButton(text string) error
-	ClickLink(text string) error
-	ClickDiv(class string) error
-	TextField(name, text string) error
+	Get(string) error
+	ClickButton(string) error
+	ClickLink(string) error
+	ClickDiv(string) error
+	TextField(string, string) error
 	ScanQrCode() (string, error)
-	LookFor(text string) (bool, error)
+	LookFor(string) (bool, error)
 	DownloadFolder() DownloadFolder
 }
 
