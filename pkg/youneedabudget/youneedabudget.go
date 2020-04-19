@@ -1,8 +1,9 @@
 package youneedabudget
 
 import (
+	"errors"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"go.bmvs.io/ynab"
 	"go.bmvs.io/ynab/api"
@@ -15,24 +16,31 @@ type YNAB struct {
 	client ynab.ClientServicer
 }
 
+type Budget struct {
+	ID   string
+	Name string
+}
+
+type Account struct {
+	ID   string
+	Name string
+	Note string
+}
+
 func New(token string) YNAB {
 	client := ynab.NewClient(token)
 	return YNAB{client}
 }
 
-func (y YNAB) Transactions(budget ybs.Budget, account ybs.Account) ([]ybs.Transaction, error) {
-	panic("implement me")
-}
-
-func (y YNAB) Budgets() ([]ybs.Budget, error) {
+func (y YNAB) Budgets() ([]Budget, error) {
 	budgets, err := y.client.Budget().GetBudgets()
 	if err != nil {
 		return nil, err
 	}
 
-	var result []ybs.Budget
+	var result []Budget
 	for _, b := range budgets {
-		result = append(result, ybs.Budget{
+		result = append(result, Budget{
 			ID:   b.ID,
 			Name: b.Name,
 		})
@@ -41,18 +49,18 @@ func (y YNAB) Budgets() ([]ybs.Budget, error) {
 	return result, nil
 }
 
-func (y YNAB) Accounts(budget ybs.Budget) ([]ybs.Account, error) {
+func (y YNAB) Accounts(budget Budget) ([]Account, error) {
 	accounts, err := y.client.Account().GetAccounts(budget.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []ybs.Account
+	var result []Account
 	for _, a := range accounts {
 		if a.Note == nil || a.Deleted {
 			continue
 		}
-		result = append(result, ybs.Account{
+		result = append(result, Account{
 			ID:   a.ID,
 			Name: a.Name,
 			Note: *a.Note,
@@ -62,8 +70,24 @@ func (y YNAB) Accounts(budget ybs.Budget) ([]ybs.Account, error) {
 	return result, nil
 }
 
-func (y YNAB) AppendTransactions(budget ybs.Budget, account ybs.Account, tranactions []ybs.Transaction) error {
+func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tranactions []ybs.Transaction) ([]ybs.Transaction, error) {
 	var payloadTransactions []transaction.PayloadTransaction
+
+	var account Account
+	accounts, err := y.Accounts(budget)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, a := range accounts {
+		if a.Name == bankAccount.Name {
+			account = a
+			break
+		}
+	}
+	if account.ID == "" {
+		return nil, errors.New("no account found")
+	}
 
 	var importIds []string
 	for _, t := range tranactions {
@@ -81,26 +105,35 @@ func (y YNAB) AppendTransactions(budget ybs.Budget, account ybs.Account, tranact
 		})
 	}
 
-	_, err := y.client.Transaction().CreateTransactions(budget.ID, payloadTransactions)
+	createdTransactions, err := y.client.Transaction().CreateTransactions(budget.ID, payloadTransactions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	var transactions []ybs.Transaction
+	for _, t := range createdTransactions.Transactions {
+		transactions = append(transactions, ybs.Transaction{
+			Date:        t.Date.Time,
+			Description: *t.PayeeName,
+			Amount:      float64(t.Amount),
+		})
+	}
+
+	return transactions, nil
 }
 
-func (y YNAB) BankImport(bank ybs.BankService, tty ybs.UserInterface) error {
+func (y YNAB) BankImport(bank ybs.BankService, ui ybs.UserInterface) error {
 	budgets, err := y.Budgets()
 	if err != nil {
 		return err
 	}
 
-	budget, err := chooseBudget(budgets, tty)
+	budget, err := chooseBudget(budgets, ui)
 	if err != nil {
 		return err
 	}
 
-	account, err := chooseAccount(y, budget, tty)
+	account, err := chooseAccount(y, budget, ui)
 	if err != nil {
 		return err
 	}
@@ -115,12 +148,12 @@ func (y YNAB) BankImport(bank ybs.BankService, tty ybs.UserInterface) error {
 		return err
 	}
 
-	err = y.AppendTransactions(budget, account, transactions)
+	transactions, err = y.AppendTransactions(budget, account, transactions)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return ui.ShowTransactions(transactions)
 }
 
 func generateImportId(importIds []string, transaction ybs.Transaction) string {
@@ -147,10 +180,10 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func chooseAccount(y ybs.BudgetService, budget ybs.Budget, userInterface ybs.UserInterface) (ybs.Account, error) {
+func chooseAccount(y YNAB, budget Budget, userInterface ybs.UserInterface) (ybs.BankAccount, error) {
 	accounts, err := y.Accounts(budget)
 	if err != nil {
-		return ybs.Account{}, err
+		return ybs.BankAccount{}, err
 	}
 
 	var accountNames []string
@@ -160,20 +193,25 @@ func chooseAccount(y ybs.BudgetService, budget ybs.Budget, userInterface ybs.Use
 
 	accountName, err := userInterface.Choose("Choose account", accountNames)
 	if err != nil {
-		return ybs.Account{}, err
+		return ybs.BankAccount{}, err
 	}
 
-	var account ybs.Account
+	bankNumberRegex := regexp.MustCompile(`^Skandia: (.*)`)
+
+	var account ybs.BankAccount
 	for _, a := range accounts {
-		if strings.Contains(a.Name, accountName) {
-			account = a
+		if a.Name == accountName {
+			account = ybs.BankAccount{
+				Name:   a.Name,
+				Number: bankNumberRegex.FindStringSubmatch(a.Note)[1],
+			}
 			break
 		}
 	}
 	return account, nil
 }
 
-func chooseBudget(budgets []ybs.Budget, userInterface ybs.UserInterface) (ybs.Budget, error) {
+func chooseBudget(budgets []Budget, userInterface ybs.UserInterface) (Budget, error) {
 	var budgetNames []string
 	for _, budget := range budgets {
 		budgetNames = append(budgetNames, budget.Name)
@@ -181,10 +219,10 @@ func chooseBudget(budgets []ybs.Budget, userInterface ybs.UserInterface) (ybs.Bu
 
 	budgetName, err := userInterface.Choose("Choose budget", budgetNames)
 	if err != nil {
-		return ybs.Budget{}, err
+		return Budget{}, err
 	}
 
-	var budget ybs.Budget
+	var budget Budget
 	for _, b := range budgets {
 		if b.Name == budgetName {
 			budget = b

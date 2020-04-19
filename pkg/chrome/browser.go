@@ -1,4 +1,4 @@
-package browser
+package chrome
 
 import (
 	"fmt"
@@ -10,14 +10,12 @@ import (
 	"github.com/makiuchi-d/gozxing"
 	"github.com/makiuchi-d/gozxing/qrcode"
 	"github.com/sclevine/agouti"
-
-	"github.com/esselius/ybs"
 )
 
 type Browser struct {
-	driver         *agouti.WebDriver
-	page           *agouti.Page
-	downloadFolder ybs.DownloadFolder
+	driver            *agouti.WebDriver
+	page              *agouti.Page
+	downloadDirectory string
 }
 
 func New(headless bool) (Browser, error) {
@@ -25,12 +23,11 @@ func New(headless bool) (Browser, error) {
 	if err != nil {
 		return Browser{}, err
 	}
-	downloadFolder := DownloadFolder{Directory: tmpDir}
 
 	options := []agouti.Option{
 		agouti.ChromeOptions("prefs", map[string]map[string]string{
 			"download": {
-				"default_directory": downloadFolder.Directory,
+				"default_directory": tmpDir,
 			},
 		}),
 	}
@@ -55,10 +52,10 @@ func New(headless bool) (Browser, error) {
 		return Browser{}, err
 	}
 
-	return Browser{driver, page, downloadFolder}, nil
+	return Browser{driver, page, tmpDir}, nil
 }
 
-func (b *Browser) Close() error {
+func (b Browser) Close() error {
 	return b.driver.Stop()
 }
 
@@ -89,8 +86,7 @@ func (b Browser) TextField(name, text string) error {
 	return selection.SendKeys(text)
 }
 
-func (b Browser) LookFor(text string) (bool, error) {
-	selector := "#he-main-wrapper > main > header > section > div > h1"
+func (b Browser) Find(selector, text string) (bool, error) {
 	content, err := b.page.Find(selector).Text()
 	if err != nil && err.Error() != fmt.Sprintf("failed to select element from selection 'CSS: %s [single]': element not found", selector) {
 		return false, err
@@ -134,6 +130,6 @@ func (b Browser) ScanQrCode() (string, error) {
 	return result.String(), nil
 }
 
-func (b Browser) DownloadFolder() ybs.DownloadFolder {
-	return b.downloadFolder
+func (b Browser) DownloadDirectory() string {
+	return b.downloadDirectory
 }

@@ -3,8 +3,12 @@ package skandia
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tealeg/xlsx"
@@ -47,6 +51,8 @@ func (s Skandia) Login(ui ybs.UserInterface) error {
 		return err
 	}
 
+	time.Sleep(2)
+
 	qrCode, err := s.Browser.ScanQrCode()
 	if err != nil {
 		return err
@@ -56,7 +62,7 @@ func (s Skandia) Login(ui ybs.UserInterface) error {
 		return err
 	}
 
-	found, err := s.Browser.LookFor("Du är utloggad")
+	found, err := s.Browser.Find("#he-main-wrapper > main > header > section > div > h1", "Du är utloggad")
 	if err != nil {
 		return err
 	}
@@ -75,8 +81,7 @@ func (s Skandia) Logout() error {
 	return s.Browser.ClickLink("Logga ut")
 }
 
-func (s Skandia) Transactions(account ybs.Account) ([]ybs.Transaction, error) {
-	bankAccount := s.BudgetAccountToBankAccount(account)
+func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, error) {
 	err := s.Browser.ClickButton("Konton")
 	if err != nil {
 		return nil, err
@@ -101,12 +106,31 @@ func (s Skandia) Transactions(account ybs.Account) ([]ybs.Transaction, error) {
 
 	time.Sleep(2 * time.Second)
 
-	filename, err := s.Browser.DownloadFolder().LatestFileWithPrefix(bankAccount.Number)
+	filename, err := latestFileWithPrefix(s.Browser.DownloadDirectory(), bankAccount.Number)
 	if err != nil {
 		return nil, err
 	}
 
 	return ExcelToTransactions(filename)
+}
+
+func latestFileWithPrefix(path, prefix string) (string, error) {
+	fileList, err := ioutil.ReadDir(path)
+	if err != nil {
+		return "", err
+	}
+
+	var files []os.FileInfo
+	for _, f := range fileList {
+		if strings.HasPrefix(f.Name(), prefix) {
+			files = append(files, f)
+		}
+	}
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].ModTime().Before(files[j].ModTime())
+	})
+
+	return fmt.Sprintf("%s/%s", path, files[len(files)-1].Name()), nil
 }
 
 func ExcelToTransactions(filename string) ([]ybs.Transaction, error) {
@@ -154,19 +178,11 @@ func scrub(transactions []ybs.Transaction) []ybs.Transaction {
 	return result
 }
 
-func (s Skandia) BudgetAccountToBankAccount(account ybs.Account) ybs.BankAccount {
-	bankNumberRegex := regexp.MustCompile(`^Skandia: (.*)`)
-	bankAccount := ybs.BankAccount{
-		Name:   account.Name,
-		Number: bankNumberRegex.FindStringSubmatch(account.Note)[1],
-	}
-	return bankAccount
-}
-
 func cleanPayee(t ybs.Transaction) ybs.Transaction {
 	result := t
 	transactionDateRegex := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}( kontaktlös|) (.*)`)
 	klarnaAutogiroRegex := regexp.MustCompile(`^Autogiro K\*(.*)`)
+	klarnaRegex := regexp.MustCompile(`^Klarna \* (.*)`)
 	genericAutogiroRegex := regexp.MustCompile(`^Autogiro (.*)`)
 	swishRegex := regexp.MustCompile(`^Swish (till|från) (.*)`)
 
@@ -175,6 +191,8 @@ func cleanPayee(t ybs.Transaction) ybs.Transaction {
 		result.Description = transactionDateRegex.FindStringSubmatch(t.Description)[2]
 	case klarnaAutogiroRegex.MatchString(t.Description):
 		result.Description = klarnaAutogiroRegex.FindStringSubmatch(t.Description)[1]
+	case klarnaRegex.MatchString(t.Description):
+		result.Description = klarnaRegex.FindStringSubmatch(t.Description)[1]
 	case genericAutogiroRegex.MatchString(t.Description):
 		result.Description = genericAutogiroRegex.FindStringSubmatch(t.Description)[1]
 	case swishRegex.MatchString(t.Description):
