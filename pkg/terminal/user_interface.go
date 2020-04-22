@@ -10,7 +10,14 @@ import (
 	"github.com/esselius/ybs"
 )
 
-type UserInterface struct {}
+type UserInterface struct {
+	endpoints []Endpoint
+}
+
+type Endpoint struct {
+	name string
+	fn func() error
+}
 
 func New() UserInterface {
 	return UserInterface{}
@@ -43,7 +50,7 @@ func (ui UserInterface) ShowQrCode(message string) error {
 func (ui UserInterface) ShowTransactions(transactions []ybs.Transaction) error {
 	fmt.Println("date,description,amount")
 	for _, t := range transactions {
-		fmt.Printf("%s,%s,%s",t.Date, t.Description, t.Amount)
+		fmt.Printf("%s,%s,%f\n", t.Date.Format("2006-01-02"), t.Description, t.Amount)
 	}
 	return nil
 }

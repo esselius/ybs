@@ -1,29 +1,29 @@
 package mock
 
-import (
-	"time"
+import "github.com/esselius/ybs"
 
-	"github.com/esselius/ybs"
-)
+type BankService struct {
+	LoginFn func(userInterface ybs.UserInterface) error
+	LoginInvoked bool
 
-var t1 []ybs.Transaction = []ybs.Transaction{
-	{
-		Date:        time.Time{},
-		Description: "Grandma",
-		Amount:      100,
-	},
+	LogoutFn func() error
+	LogoutInvoked bool
+
+	TransactionsFn func(account ybs.BankAccount) ([]ybs.Transaction, error)
+	TransactionsInvoked bool
 }
 
-type BankService struct {}
-
-func (m BankService) Login() error {
-	return nil
+func (bs *BankService) Login(userInterface ybs.UserInterface) error {
+	bs.LoginInvoked = true
+	return bs.LoginFn(userInterface)
 }
 
-func (m BankService) Logout() error {
-	return nil
+func (bs *BankService) Logout() error {
+	bs.LogoutInvoked = true
+	return bs.LogoutFn()
 }
 
-func (m BankService) Transactions(account ybs.Account) ([]ybs.Transaction, error) {
-	return t1, nil
+func (bs *BankService) Transactions(account ybs.BankAccount) ([]ybs.Transaction, error) {
+	bs.TransactionsInvoked = true
+	return bs.TransactionsFn(account)
 }
