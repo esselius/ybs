@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"go.bmvs.io/ynab"
 	"go.bmvs.io/ynab/api"
@@ -89,20 +90,52 @@ func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tra
 		return nil, errors.New("no account found")
 	}
 
+	var importedPayloadTransactions []transaction.PayloadTransaction
 	var importIds []string
 	for _, t := range tranactions {
-		importId := generateImportId(importIds, t)
-		importIds = append(importIds, importId)
+		var importIdPtr *string
+		var importId string
+		if t.Status == "cleared" {
+			importId = generateImportId(importIds, t)
+			importIdPtr = &importId
+			importIds = append(importIds, importId)
+		}
 		desc := t.Description
-		payloadTransactions = append(payloadTransactions, transaction.PayloadTransaction{
+		importedPayloadTransactions = append(importedPayloadTransactions, transaction.PayloadTransaction{
 			AccountID: account.ID,
 			Date:      api.Date{Time: t.Date},
 			Amount:    int64(t.Amount * 1000),
-			Cleared:   "cleared",
+			Cleared:   transaction.ClearingStatus(t.Status),
 			Approved:  false,
 			PayeeName: &desc,
-			ImportID:  &importId,
+			ImportID:  importIdPtr,
 		})
+	}
+
+	existingTransactions, err := y.client.Transaction().GetTransactionsByAccount(
+		budget.ID,
+		account.ID,
+		&transaction.Filter{
+			Since: &api.Date{
+				time.Now().AddDate(
+					0,
+					-1,
+					0,
+					),
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pt := range importedPayloadTransactions {
+		for _, et := range existingTransactions {
+			if pt.Date == et.Date && pt.Amount == et.Amount && pt.Cleared == et.Cleared {
+				break
+			}
+			payloadTransactions = append(payloadTransactions, importedPayloadTransactions...)
+		}
+
 	}
 
 	createdTransactions, err := y.client.Transaction().CreateTransactions(budget.ID, payloadTransactions)

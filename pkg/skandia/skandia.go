@@ -82,6 +82,26 @@ func (s Skandia) Logout() error {
 }
 
 func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, error) {
+	var result []ybs.Transaction
+
+	unclearedTransactions, err := s.getUnclearedTransactionsFromReservedAmounts(bankAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	result = append(result, unclearedTransactions...)
+
+	clearedTransactions, err := s.getTransactionsFromExcelExport(bankAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	result = append(result, clearedTransactions...)
+
+	return result, nil
+}
+
+func (s Skandia) getTransactionsFromExcelExport(account ybs.BankAccount) ([]ybs.Transaction, error) {
 	err := s.Browser.ClickButton("Konton")
 	if err != nil {
 		return nil, err
@@ -92,7 +112,7 @@ func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, e
 		return nil, err
 	}
 
-	err = s.Browser.ClickLink(fmt.Sprintf("%s (%s)", bankAccount.Name, bankAccount.Number))
+	err = s.Browser.ClickLink(fmt.Sprintf("%s (%s)", account.Name, account.Number))
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +126,56 @@ func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, e
 
 	time.Sleep(2 * time.Second)
 
-	filename, err := latestFileWithPrefix(s.Browser.DownloadDirectory(), bankAccount.Number)
+	filename, err := latestFileWithPrefix(s.Browser.DownloadDirectory(), account.Number)
 	if err != nil {
 		return nil, err
 	}
 
 	return ExcelToTransactions(filename)
+}
+
+func (s Skandia) getUnclearedTransactionsFromReservedAmounts(account ybs.BankAccount) ([]ybs.Transaction, error) {
+	err := s.Browser.ClickButton("Konton")
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Browser.ClickLink("Kontoöversikt")
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.Browser.ClickLink(fmt.Sprintf("%s (%s)", account.Name, account.Number))
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(2 * time.Second)
+
+	table, err := s.Browser.Table("#ctl00_ctl00_ctl00_ctl00_cphBody_cphContentWide_cphContentWide_cphMainContent_cphMainContentSub_ucOverviewDetails_ucSearchTransactionList_tlReservations > div.he-table-fade > div > table")
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []ybs.Transaction
+	for _, r := range table {
+		date, err := time.Parse("2006-01-02", r[0])
+		if err != nil {
+			return nil, err
+		}
+		amount, err := strconv.ParseFloat(strings.Replace(r[2],",", ".", 1), 64)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, ybs.Transaction{
+			Date:        date,
+			Description: r[1],
+			Amount:      amount,
+			Status:      "uncleared",
+		})
+	}
+
+	return transactions, nil
 }
 
 func latestFileWithPrefix(path, prefix string) (string, error) {

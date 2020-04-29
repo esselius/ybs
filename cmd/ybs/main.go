@@ -24,7 +24,7 @@ func main() {
 	budgetService = youneedabudget.New(os.Getenv("YNAB_TOKEN"))
 
 	var err error
-	browser, err = chrome.New(true)
+	browser, err = chrome.New(false)
 	if err != nil {
 		log.Fatal(err)
 	}
