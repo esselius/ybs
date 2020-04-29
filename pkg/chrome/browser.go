@@ -94,6 +94,38 @@ func (b Browser) Find(selector, text string) (bool, error) {
 	return content == text, nil
 }
 
+func (b Browser) Table(selector string) ([][]string, error) {
+	var result [][]string
+	table := b.page.Find(selector)
+
+	rows := table.All("tbody tr")
+	rowCount, err := rows.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < rowCount; i++ {
+		cells := rows.At(i).All("td")
+		cellCount, err := cells.Count()
+		if err != nil {
+			return nil, err
+		}
+
+		var rowCells []string
+		for j := 0; j < cellCount; j++ {
+			cell, err := cells.At(j).Text()
+			if err != nil {
+				return nil, err
+			}
+			rowCells = append(rowCells, cell)
+
+		}
+		result = append(result, rowCells)
+	}
+
+	return result, nil
+}
+
 func (b Browser) ScanQrCode() (string, error) {
 	file, err := ioutil.TempFile("", "")
 	if err != nil {

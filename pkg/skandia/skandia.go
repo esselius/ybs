@@ -17,7 +17,7 @@ import (
 )
 
 type Skandia struct {
-	Browser       ybs.Browser
+	Browser ybs.Browser
 }
 
 func (s Skandia) Login(ui ybs.UserInterface) error {
@@ -78,7 +78,14 @@ func (s Skandia) Logout() error {
 	if err != nil {
 		return err
 	}
-	return s.Browser.ClickLink("Logga ut")
+
+	err = s.Browser.ClickLink("Logga ut")
+	if err != nil {
+		return err
+	}
+
+	_, err = s.Browser.Find("#he-main-wrapper > main > header > section > div > h1", "Nu är du utloggad")
+	return err
 }
 
 func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, error) {
@@ -161,6 +168,7 @@ func ExcelToTransactions(filename string) ([]ybs.Transaction, error) {
 			Date:        date,
 			Description: row.Cells[1].Value,
 			Amount:      amount,
+			Status:      "cleared",
 		}
 		transactions = append(transactions, transaction)
 	}

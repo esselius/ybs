@@ -43,4 +43,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = bankService.Logout()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

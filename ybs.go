@@ -3,9 +3,10 @@ package ybs
 import "time"
 
 type Transaction struct {
-	Date        time.Time `xlsx:"0"`
-	Description string    `xlsx:"1"`
-	Amount      float64   `xlsx:"1"`
+	Date        time.Time
+	Description string
+	Amount      float64
+	Status      string
 }
 
 type BankAccount struct {
@@ -38,6 +39,7 @@ type Browser interface {
 	TextField(string, string) error
 	ScanQrCode() (string, error)
 	Find(string, string) (bool, error)
+	Table(string) ([][]string, error)
 	DownloadDirectory() string
 	Close() error
 }

@@ -143,11 +143,6 @@ func (y YNAB) BankImport(bank ybs.BankService, ui ybs.UserInterface) error {
 		return err
 	}
 
-	err = bank.Logout()
-	if err != nil {
-		return err
-	}
-
 	transactions, err = y.AppendTransactions(budget, account, transactions)
 	if err != nil {
 		return err
