@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"go.bmvs.io/ynab"
 	"go.bmvs.io/ynab/api"
@@ -91,6 +92,9 @@ func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tra
 
 	var importIds []string
 	for _, t := range tranactions {
+		if t.Date.After(time.Now()) {
+			continue
+		}
 		importId := generateImportId(importIds, t)
 		importIds = append(importIds, importId)
 		desc := t.Description
@@ -102,6 +106,7 @@ func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tra
 			Approved:  false,
 			PayeeName: &desc,
 			ImportID:  &importId,
+
 		})
 	}
 
