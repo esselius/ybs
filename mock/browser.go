@@ -1,31 +1,31 @@
 package mock
 
 type Browser struct {
-	GetFn func(url string) error
+	GetFn      func(url string) error
 	GetInvoked bool
 
-	ClickButtonFn func(text string) error
+	ClickButtonFn      func(text string) error
 	ClickButtonInvoked bool
 
-	ClickLinkFn func(text string) error
+	ClickLinkFn      func(text string) error
 	ClickLinkInvoked bool
 
-	ClickDivFn func(class string) error
+	ClickDivFn      func(class string) error
 	ClickDivInvoked bool
 
-	TextFieldFn func(name, text string) error
+	TextFieldFn      func(name, text string) error
 	TextFieldInvoked bool
 
-	ScanQrCodeFn func() (string, error)
+	ScanQrCodeFn      func() (string, error)
 	ScanQrCodeInvoked bool
 
-	FindFn func(selector, text string) (bool, error)
+	FindFn      func(selector, text string) (bool, error)
 	FindInvoked bool
 
-	DownloadDirectoryFn func() string
+	DownloadDirectoryFn      func() string
 	DownloadDirectoryInvoked bool
 
-	CloseFn func() error
+	CloseFn      func() error
 	CloseInvoked bool
 }
 
@@ -41,6 +41,7 @@ func (b *Browser) ClickButton(text string) error {
 
 func (b *Browser) ClickLink(text string) error {
 	b.ClickLinkInvoked = true
+	return nil
 }
 
 func (b *Browser) ClickDiv(class string) error {
@@ -72,4 +73,3 @@ func (b *Browser) Close() error {
 	b.CloseInvoked = true
 	return b.CloseFn()
 }
-
