@@ -1,7 +1,9 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ sources ? import ./nix/sources.nix }:
 
-with pkgs; rec {
-    application = callPackage ./default.nix {};
+let
+    pkgs = import sources.nixpkgs {};
+in with pkgs; rec {
+    application = pkgs.callPackage ./default.nix {};
     docker = dockerTools.buildImage {
         name = application.name;
         contents = application;
