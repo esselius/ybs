@@ -104,14 +104,16 @@ func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, e
 		return nil, err
 	}
 
-	time.Sleep(2 * time.Second)
+	// TODO Figure out how to wait for elements showing up
+	time.Sleep(5 * time.Second)
 
 	err = s.Browser.ClickLink("Exportera till Excel")
 	if err != nil {
 		return nil, err
 	}
 
-	time.Sleep(2 * time.Second)
+	// TODO Check file with exponential backoff instead
+	time.Sleep(10 * time.Second)
 
 	filename, err := latestFileWithPrefix(s.Browser.DownloadDirectory(), bankAccount.Number)
 	if err != nil {
