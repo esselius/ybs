@@ -31,6 +31,14 @@ func (s Skandia) Login(ui ybs.UserInterface) error {
 		return err
 	}
 
+	time.Sleep(2 * time.Second)
+
+
+	err = s.Browser.ClickButton("Acceptera alla cookies")
+	if err != nil {
+		return err
+	}
+
 	err = s.Browser.ClickLink("Logga in")
 	if err != nil {
 		return err
@@ -51,7 +59,7 @@ func (s Skandia) Login(ui ybs.UserInterface) error {
 		return err
 	}
 
-	time.Sleep(2)
+	time.Sleep(5 * time.Second)
 
 	qrCode, err := s.Browser.ScanQrCode()
 	if err != nil {
