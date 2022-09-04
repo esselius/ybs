@@ -33,7 +33,6 @@ func (s Skandia) Login(ui ybs.UserInterface) error {
 
 	time.Sleep(2 * time.Second)
 
-
 	err = s.Browser.ClickButton("Acceptera alla cookies")
 	if err != nil {
 		return err

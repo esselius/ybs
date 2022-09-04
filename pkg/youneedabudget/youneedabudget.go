@@ -106,7 +106,6 @@ func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tra
 			Approved:  false,
 			PayeeName: &desc,
 			ImportID:  &importId,
-
 		})
 	}
 
