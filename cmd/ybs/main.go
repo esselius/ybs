@@ -13,9 +13,9 @@ import (
 
 var (
 	userInterface ybs.UserInterface
-	bankService ybs.BankService
+	bankService   ybs.BankService
 	budgetService ybs.BudgetService
-	browser ybs.Browser
+	browser       ybs.Browser
 )
 
 func main() {
@@ -39,10 +39,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = budgetService.BankImport(bankService, userInterface)
+	budgets, err := budgetService.Budgets()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	budget, err := youneedabudget.ChooseBudget(budgets, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	account, err := budgetService.ChooseAccount(budget, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	transactions, err := bankService.Transactions(account, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	transactions, err = budgetService.AppendTransactions(budget, account, transactions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	userInterface.ShowTransactions(transactions)
 
 	err = bankService.Logout()
 	if err != nil {

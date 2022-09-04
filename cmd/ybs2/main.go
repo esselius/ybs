@@ -28,8 +28,30 @@ func main() {
 		Path: path,
 	}
 
-	err := budgetService.BankImport(bankService, userInterface)
+	budgets, err := budgetService.Budgets()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	budget, err := youneedabudget.ChooseBudget(budgets, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	account, err := budgetService.ChooseAccount(budget, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	transactions, err := bankService.Transactions(account, userInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	transactions, err = budgetService.AppendTransactions(budget, account, transactions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	userInterface.ShowTransactions(transactions)
 }

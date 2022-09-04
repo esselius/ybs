@@ -95,7 +95,7 @@ func (s Skandia) Logout() error {
 	return err
 }
 
-func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, error) {
+func (s Skandia) Transactions(bankAccount ybs.BankAccount, ui ybs.UserInterface) ([]ybs.Transaction, error) {
 	err := s.Browser.ClickButton("Konton")
 	if err != nil {
 		return nil, err
@@ -140,27 +140,42 @@ func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, e
 	return ExcelToTransactions(filename)
 }
 
-func latestFileWithPrefix(path, prefix string) (string, error) {
+func IsExcelExportFile(file os.FileInfo, account string) bool {
+	alphanumbericOnly := strings.ReplaceAll((strings.ReplaceAll(account, "-", "")), ".", "")
+
+	return strings.HasPrefix(file.Name(), alphanumbericOnly) ||
+		strings.HasPrefix(file.Name(), account)
+}
+
+func MatchExcelExportFiles(path, prefix string) ([]string, error) {
 	fileList, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	for _, f := range fileList {
+		if IsExcelExportFile(f, prefix) {
+			files = append(files, path+f.Name())
+		}
+	}
+
+	return files, nil
+}
+
+func latestFileWithPrefix(path, prefix string) (string, error) {
+	files, err := MatchExcelExportFiles(path, prefix)
 	if err != nil {
 		return "", err
 	}
 
-	cleanedPrefix := strings.ReplaceAll((strings.ReplaceAll(prefix, "-", "")), ".", "")
-	println(cleanedPrefix)
-
-	var files []os.FileInfo
-	for _, f := range fileList {
-		println(f.Name())
-		if strings.HasPrefix(f.Name(), cleanedPrefix) {
-			files = append(files, f)
-		}
-	}
 	sort.Slice(files, func(i, j int) bool {
-		return files[i].ModTime().Before(files[j].ModTime())
+		i_file, _ := os.Stat(files[i])
+		j_file, _ := os.Stat(files[j])
+		return i_file.ModTime().Before(j_file.ModTime())
 	})
 
-	return fmt.Sprintf("%s/%s", path, files[len(files)-1].Name()), nil
+	return fmt.Sprintf("%s/%s", path, files[len(files)-1]), nil
 }
 
 func ExcelToTransactions(filename string) ([]ybs.Transaction, error) {

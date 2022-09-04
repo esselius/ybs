@@ -16,7 +16,7 @@ type UserInterface struct {
 
 type Endpoint struct {
 	name string
-	fn func() error
+	fn   func() error
 }
 
 func New() UserInterface {
@@ -35,6 +35,16 @@ func (ui UserInterface) Ask(message string) (string, error) {
 func (ui UserInterface) Choose(message string, options []string) (string, error) {
 	var response string
 	prompt := &survey.Select{
+		Message: message,
+		Options: options,
+	}
+	err := survey.AskOne(prompt, &response)
+	return response, err
+}
+
+func (ui UserInterface) ChooseMultiple(message string, options []string) ([]string, error) {
+	var response []string
+	prompt := &survey.MultiSelect{
 		Message: message,
 		Options: options,
 	}

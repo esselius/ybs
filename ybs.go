@@ -14,19 +14,27 @@ type BankAccount struct {
 	Number string
 }
 
+type Budget struct {
+	ID   string
+	Name string
+}
+
 type BankService interface {
 	Login(UserInterface) error
 	Logout() error
-	Transactions(BankAccount) ([]Transaction, error)
+	Transactions(BankAccount, UserInterface) ([]Transaction, error)
 }
 
 type BudgetService interface {
-	BankImport(BankService, UserInterface) error
+	Budgets() ([]Budget, error)
+	ChooseAccount(Budget, UserInterface) (BankAccount, error)
+	AppendTransactions(Budget, BankAccount, []Transaction) ([]Transaction, error)
 }
 
 type UserInterface interface {
 	Ask(string) (string, error)
 	Choose(string, []string) (string, error)
+	ChooseMultiple(string, []string) ([]string, error)
 	ShowQrCode(string) error
 	ShowTransactions([]Transaction) error
 }

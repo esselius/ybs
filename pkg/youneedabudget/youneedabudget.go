@@ -17,11 +17,6 @@ type YNAB struct {
 	client ynab.ClientServicer
 }
 
-type Budget struct {
-	ID   string
-	Name string
-}
-
 type Account struct {
 	ID   string
 	Name string
@@ -33,15 +28,15 @@ func New(token string) YNAB {
 	return YNAB{client}
 }
 
-func (y YNAB) Budgets() ([]Budget, error) {
+func (y YNAB) Budgets() ([]ybs.Budget, error) {
 	budgets, err := y.client.Budget().GetBudgets()
 	if err != nil {
 		return nil, err
 	}
 
-	var result []Budget
+	var result []ybs.Budget
 	for _, b := range budgets {
-		result = append(result, Budget{
+		result = append(result, ybs.Budget{
 			ID:   b.ID,
 			Name: b.Name,
 		})
@@ -50,7 +45,7 @@ func (y YNAB) Budgets() ([]Budget, error) {
 	return result, nil
 }
 
-func (y YNAB) Accounts(budget Budget) ([]Account, error) {
+func (y YNAB) Accounts(budget ybs.Budget) ([]Account, error) {
 	accounts, err := y.client.Account().GetAccounts(budget.ID)
 	if err != nil {
 		return nil, err
@@ -71,7 +66,7 @@ func (y YNAB) Accounts(budget Budget) ([]Account, error) {
 	return result, nil
 }
 
-func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tranactions []ybs.Transaction) ([]ybs.Transaction, error) {
+func (y YNAB) AppendTransactions(budget ybs.Budget, bankAccount ybs.BankAccount, tranactions []ybs.Transaction) ([]ybs.Transaction, error) {
 	var payloadTransactions []transaction.PayloadTransaction
 
 	var account Account
@@ -126,35 +121,6 @@ func (y YNAB) AppendTransactions(budget Budget, bankAccount ybs.BankAccount, tra
 	return transactions, nil
 }
 
-func (y YNAB) BankImport(bank ybs.BankService, ui ybs.UserInterface) error {
-	budgets, err := y.Budgets()
-	if err != nil {
-		return err
-	}
-
-	budget, err := chooseBudget(budgets, ui)
-	if err != nil {
-		return err
-	}
-
-	account, err := chooseAccount(y, budget, ui)
-	if err != nil {
-		return err
-	}
-
-	transactions, err := bank.Transactions(account)
-	if err != nil {
-		return err
-	}
-
-	transactions, err = y.AppendTransactions(budget, account, transactions)
-	if err != nil {
-		return err
-	}
-
-	return ui.ShowTransactions(transactions)
-}
-
 func generateImportId(importIds []string, transaction ybs.Transaction) string {
 	var importId string
 	for i := 1; i < 999; i++ {
@@ -179,7 +145,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func chooseAccount(y YNAB, budget Budget, userInterface ybs.UserInterface) (ybs.BankAccount, error) {
+func (y YNAB) ChooseAccount(budget ybs.Budget, userInterface ybs.UserInterface) (ybs.BankAccount, error) {
 	accounts, err := y.Accounts(budget)
 	if err != nil {
 		return ybs.BankAccount{}, err
@@ -210,7 +176,7 @@ func chooseAccount(y YNAB, budget Budget, userInterface ybs.UserInterface) (ybs.
 	return account, nil
 }
 
-func chooseBudget(budgets []Budget, userInterface ybs.UserInterface) (Budget, error) {
+func ChooseBudget(budgets []ybs.Budget, userInterface ybs.UserInterface) (ybs.Budget, error) {
 	var budgetNames []string
 	for _, budget := range budgets {
 		budgetNames = append(budgetNames, budget.Name)
@@ -218,10 +184,10 @@ func chooseBudget(budgets []Budget, userInterface ybs.UserInterface) (Budget, er
 
 	budgetName, err := userInterface.Choose("Choose budget", budgetNames)
 	if err != nil {
-		return Budget{}, err
+		return ybs.Budget{}, err
 	}
 
-	var budget Budget
+	var budget ybs.Budget
 	for _, b := range budgets {
 		if b.Name == budgetName {
 			budget = b
