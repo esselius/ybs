@@ -81,6 +81,12 @@ func (b Browser) ClickDiv(class string) error {
 	return selection.Click()
 }
 
+func (b Browser) ClickDivByAttribute(attribute string, value string) error {
+	selection := b.page.Find(fmt.Sprintf("div[%s=\"%s\"]", attribute, value))
+
+	return selection.Click()
+}
+
 func (b Browser) TextField(name, text string) error {
 	selection := b.page.FindByName(name)
 	return selection.SendKeys(text)

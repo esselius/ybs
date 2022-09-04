@@ -102,20 +102,30 @@ func (s Skandia) Transactions(bankAccount ybs.BankAccount) ([]ybs.Transaction, e
 		return nil, err
 	}
 
-	err = s.Browser.ClickLink("Kontoöversikt")
+	err = s.Browser.ClickLink("Mina konton")
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.Browser.ClickLink(fmt.Sprintf("%s (%s)", bankAccount.Name, bankAccount.Number))
+	// err = s.Browser.ClickLink(fmt.Sprintf("%s (%s)", bankAccount.Name, bankAccount.Number))
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// // TODO Figure out how to wait for elements showing up
+	// time.Sleep(5 * time.Second)
+
+	// err = s.Browser.ClickLink("Exportera")
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	err = s.Browser.ClickDivByAttribute("data-testid", "export-menu")
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO Figure out how to wait for elements showing up
-	time.Sleep(5 * time.Second)
-
-	err = s.Browser.ClickLink("Exportera till Excel")
+	err = s.Browser.ClickDivByAttribute("data-testid", "export-transaction-list-to-excel-button")
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +147,13 @@ func latestFileWithPrefix(path, prefix string) (string, error) {
 		return "", err
 	}
 
+	cleanedPrefix := strings.ReplaceAll((strings.ReplaceAll(prefix, "-", "")), ".", "")
+	println(cleanedPrefix)
+
 	var files []os.FileInfo
 	for _, f := range fileList {
-		if strings.HasPrefix(f.Name(), prefix) {
+		println(f.Name())
+		if strings.HasPrefix(f.Name(), cleanedPrefix) {
 			files = append(files, f)
 		}
 	}

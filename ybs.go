@@ -36,6 +36,7 @@ type Browser interface {
 	ClickButton(string) error
 	ClickLink(string) error
 	ClickDiv(string) error
+	ClickDivByAttribute(string, string) error
 	TextField(string, string) error
 	ScanQrCode() (string, error)
 	Find(string, string) (bool, error)
