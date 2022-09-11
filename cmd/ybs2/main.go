@@ -48,10 +48,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	transactions, err = budgetService.AppendTransactions(budget, account, transactions)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// transactions, err = budgetService.AppendTransactions(budget, account, transactions)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	userInterface.ShowTransactions(transactions)
 }
